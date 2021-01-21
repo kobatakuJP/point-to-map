@@ -1,42 +1,85 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+  <div>
+    <textarea
+      :placeholder="`lat${separator}lon`"
+      v-model="inputValue"
+    ></textarea>
+    {{ inputValue }}{{ latlons }}
+    <div id="OSMCanvas"></div>
   </div>
 </template>
 
 <script>
+import "ol/ol.css";
+import { transform } from "ol/proj";
+import Map from "ol/Map";
+import View from "ol/View";
+import TitleLayer from "ol/layer/Tile";
+import OSM from "ol/source/OSM";
+
+const proj4 = require("proj4").default;
+
 export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
+  data() {
+    return {
+      inputValue: "",
+      separator: "|",
+      FromEPSG: "4301",
+      ToEPSG: "4326",
+      mapview: null,
+    };
+  },
+  mounted() {
+    proj4.defs([
+      [
+        "EPSG:4301", //東京測地系/日本測地系 SRID=4301
+        "+proj=longlat +ellps=bessel +towgs84=-146.414,507.337,680.507,0,0,0,0 +no_defs",
+      ],
+    ]);
+    this.initialize();
+  },
+  computed: {
+    latlons() {
+      const lines = this.inputValue.split("\n");
+      const str = lines.map((v) =>
+        v.split(this.separator).map((s) => parseFloat(s.trim()))
+      );
+      return str;
+    },
+  },
+  methods: {
+    /**
+     * From測地系からTo測地系に変換
+     * @return [lon, lat]
+     */
+    changeEPSG(lon, lat) {
+      return proj4(`EPSG:${this.FromEPSG}`, `EPSG:${this.ToEPSG}`, [lon, lat]);
+    },
+    initialize() {
+      this.createMap();
+      this.mapview.on("click", (ev) => {
+        var lonlat = transform(ev.coordinate, "EPSG:3857", "EPSG:4326");
+        this.selectLatLong = lonlat;
+        this.$parent.selectLonLat = lonlat;
+        this.$emit("panretMessage");
+      });
+    },
+    createMap() {
+      this.mapview = new Map({
+        target: "OSMCanvas",
+        layers: [
+          new TitleLayer({
+            source: new OSM(),
+          }),
+        ],
+        view: new View({
+          center: [0, 0],
+          zoom: 0,
+        }),
+      });
+    },
+  },
+};
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
@@ -54,5 +97,9 @@ li {
 }
 a {
   color: #42b983;
+}
+#OSMCanvas {
+  width: 100%;
+  height: 400px;
 }
 </style>

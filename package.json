@@ -9,9 +9,12 @@
   },
   "dependencies": {
     "core-js": "^3.6.5",
+    "ol": "^6.5.0",
+    "proj4": "^2.7.0",
     "vue": "^2.6.11"
   },
   "devDependencies": {
+    "@types/proj4": "^2.5.0",
     "@vue/cli-plugin-babel": "~4.5.0",
     "@vue/cli-plugin-eslint": "~4.5.0",
     "@vue/cli-service": "~4.5.0",
@@ -36,7 +39,6 @@
   },
   "browserslist": [
     "> 1%",
-    "last 2 versions",
-    "not dead"
+    "last 2 versions"
   ]
 }
