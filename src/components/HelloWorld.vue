@@ -11,10 +11,14 @@
 
 <script>
 import "ol/ol.css";
+import { Map, View } from "ol";
 import { transform } from "ol/proj";
-import Map from "ol/Map";
-import View from "ol/View";
-import TitleLayer from "ol/layer/Tile";
+import { Vector as VectorLayer, Tile as TitleLayer } from "ol/layer";
+import { Vector as VectorSource } from "ol/source";
+import Feature from "ol/Feature";
+import {Circle as CircleStyle, Fill, Stroke, Style} from 'ol/style';
+import {/*LineString,*/ Point} from 'ol/geom';
+// import {getVectorContext} from 'ol/render';
 import OSM from "ol/source/OSM";
 
 const proj4 = require("proj4").default;
@@ -26,7 +30,15 @@ export default {
       separator: "|",
       FromEPSG: "4301",
       ToEPSG: "4326",
+      MapEPSG: "3857",
       mapview: null,
+      feature_style: {
+        fillColor: "#98FB98",
+        fillOpacity: 0.8,
+        strokeColor: "#3CB371",
+        strokeWidth: 2,
+        pointRadius: 6,
+      },
     };
   },
   mounted() {
@@ -57,12 +69,7 @@ export default {
     },
     initialize() {
       this.createMap();
-      this.mapview.on("click", (ev) => {
-        var lonlat = transform(ev.coordinate, "EPSG:3857", "EPSG:4326");
-        this.selectLatLong = lonlat;
-        this.$parent.selectLonLat = lonlat;
-        this.$emit("panretMessage");
-      });
+      this.addPoint();
     },
     createMap() {
       this.mapview = new Map({
@@ -71,12 +78,43 @@ export default {
           new TitleLayer({
             source: new OSM(),
           }),
+          this.addPoint()
         ],
         view: new View({
-          center: [0, 0],
-          zoom: 0,
+          center: transform(
+            [135, 35],
+            `EPSG:${this.ToEPSG}`,
+            `EPSG:${this.MapEPSG}`
+          ),
+          zoom: 5,
         }),
       });
+    },
+    createPoint(lon, lat) {
+      return new Feature({
+        geometry: new Point([lon, lat]).transform(
+          `EPSG:${this.ToEPSG}`,
+          `EPSG:${this.MapEPSG}`
+        ),
+        size: 20,
+      });
+    },
+    addPoint() {
+      var vectorSource = new VectorSource({
+        features: [this.createPoint(135, 35)],
+        wrapX: false,
+      });
+      var vector = new VectorLayer({
+        source: vectorSource,
+        style: new Style({
+          image: new CircleStyle({
+            radius: 10,
+            fill: new Fill({ color: "#666666" }),
+            stroke: new Stroke({ color: "#bada55", width: 1 }),
+          }),
+        }),
+      });
+      return vector;
     },
   },
 };
