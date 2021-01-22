@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="height: 100%">
     <textarea
       :placeholder="`lat${separator}lon`"
       v-model="inputValue"
@@ -150,6 +150,6 @@ a {
 }
 #OSMCanvas {
   width: 100%;
-  height: 400px;
+  height: 90%
 }
 </style>
