@@ -4,7 +4,11 @@
       :placeholder="`lat${separator}lon`"
       v-model="inputValue"
     ></textarea>
-    {{ inputValue }}{{ latlons }}
+    <textarea
+      placeholder="パースされたものが入ります"
+      v-model="displayConvertedLatLons"
+      disabled
+    ></textarea>
     <div id="OSMCanvas"></div>
   </div>
 </template>
@@ -16,8 +20,8 @@ import { transform } from "ol/proj";
 import { Vector as VectorLayer, Tile as TitleLayer } from "ol/layer";
 import { Vector as VectorSource } from "ol/source";
 import Feature from "ol/Feature";
-import {Circle as CircleStyle, Fill, Stroke, Style} from 'ol/style';
-import {/*LineString,*/ Point} from 'ol/geom';
+import { Circle as CircleStyle, Fill, Stroke, Style } from "ol/style";
+import { /*LineString,*/ Point } from "ol/geom";
 // import {getVectorContext} from 'ol/render';
 import OSM from "ol/source/OSM";
 
@@ -32,13 +36,7 @@ export default {
       ToEPSG: "4326",
       MapEPSG: "3857",
       mapview: null,
-      feature_style: {
-        fillColor: "#98FB98",
-        fillOpacity: 0.8,
-        strokeColor: "#3CB371",
-        strokeWidth: 2,
-        pointRadius: 6,
-      },
+      pointLayer: null,
     };
   },
   mounted() {
@@ -51,13 +49,30 @@ export default {
     this.initialize();
   },
   computed: {
+    /** 入力をlatlonの配列に変換する */
     latlons() {
+      if (!this.inputValue) return [];
       const lines = this.inputValue.split("\n");
-      const str = lines.map((v) =>
+      const latlons = lines.map((v) =>
         v.split(this.separator).map((s) => parseFloat(s.trim()))
       );
-      return str;
+      return latlons ? latlons : [];
     },
+    /** 測地系を設定どおりに変換したもの */
+    convertedLatLons() {
+      return this.latlons.map((v) => this.changeEPSG(v[1], v[0]).reverse());
+    },
+    /** 変換したものを見やすい文字列にしたもの */
+    displayConvertedLatLons() {
+      return this.convertedLatLons.map(v => v.join(" ")).join("\n")
+    }
+  },
+  watch: {
+    convertedLatLons() {
+      this.mapview.removeLayer(this.pointLayer);
+      this.pointLayer = this.createPointLayer()
+      this.mapview.addLayer(this.pointLayer);
+    }
   },
   methods: {
     /**
@@ -69,7 +84,6 @@ export default {
     },
     initialize() {
       this.createMap();
-      this.addPoint();
     },
     createMap() {
       this.mapview = new Map({
@@ -78,7 +92,6 @@ export default {
           new TitleLayer({
             source: new OSM(),
           }),
-          this.addPoint()
         ],
         view: new View({
           center: transform(
@@ -96,12 +109,11 @@ export default {
           `EPSG:${this.ToEPSG}`,
           `EPSG:${this.MapEPSG}`
         ),
-        size: 20,
       });
     },
-    addPoint() {
+    createPointLayer() {
       var vectorSource = new VectorSource({
-        features: [this.createPoint(135, 35)],
+        features: this.convertedLatLons.map(v => this.createPoint(v[1], v[0])),
         wrapX: false,
       });
       var vector = new VectorLayer({
@@ -109,13 +121,13 @@ export default {
         style: new Style({
           image: new CircleStyle({
             radius: 10,
-            fill: new Fill({ color: "#666666" }),
-            stroke: new Stroke({ color: "#bada55", width: 1 }),
+            fill: new Fill({ color: "blue" }),
+            stroke: new Stroke({ color: "white", width: 2 }),
           }),
         }),
       });
       return vector;
-    },
+    }
   },
 };
 </script>
